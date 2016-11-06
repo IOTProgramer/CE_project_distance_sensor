@@ -15,7 +15,8 @@
 #define MOTOR1  RB1     // Clockwise motor1 = 1 motor2 = 0
 #define MOTOR2  RB2     // Anti Clockwise motor1 = 0 motor 2 = 1
 #define outLed  RD0  
-#define DIST_ER 10
+#define PRO_SIZE 10      // expected product size in cm's
+#define WALL_DIST  30   // Distance in cm to the margin of the conveyord belt
 // End of constants block
 
 #pragma config  FOSC = HS
@@ -28,7 +29,8 @@
 
 long freq;
 unsigned int duty1 = 500;
-int aux;
+int aux = 0;
+int goFlag = 0;
 void interrupt echo(){
     if(RBIF == 1){
         RBIE =  0;
@@ -109,7 +111,7 @@ void lcdOutput(int dist,char message[]){
     // Cant find the lcd.h library
 }
 
-void errorSound(){
+void errorSound(){  // consider adding sound duration time
     // To do
 }
 void main(void) {   
@@ -122,17 +124,25 @@ void main(void) {
         RB0 = 0;
         
        __delay_ms(100);
+       if(aux != 0)         // Remove the IF statement when finished
         aux = aux + 1;
-        
-        if(aux>=2 && aux<=400){
-            if(aux <= DIST_ER){
-                outLed = 1;
-                PWM1Stop();
-            }else{
-                outLed = 0;
-            }
-        }else{
-            outLed = 0;
+       
+       // assuming a product at least 5 cm long and a distance
+       if(aux > 26){           // no product in the belt
+           goFlag = 0;
+       }else if(( aux >= PRO_SIZE-1 && aux <= PRO_SIZE+1 ) && goFlag == 0 ){ // change according to expected product dimensions
+            outLed = 1;
+            PWM1Stop();
+            __delay_ms(3000);
+            PWM1Start();    // PROBLEM here, after this, the product will be stopped again inmediatly in the
+            goFlag = 1;
+            // next iteration
+            
+        }else if(aux <= PRO_SIZE-1 || aux >= PRO_SIZE+1){
+           // product of wrong size detected behavior
+           errorSound();
+           // Consider not stopping the product but doing something else
+           PWM1Stop(); // need to implement the error detected behavior
         }      
          __delay_ms(400);
     }
